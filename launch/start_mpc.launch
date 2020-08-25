@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+       
+    <!-- Spawm robot -->
+    <node name="mpc_controller" pkg="kobuki_nav" type="mpc_controller.py" output="screen"
+        args="1" />
+          
+</launch>

@@ -1,0 +1,35 @@
+<!-- Launches Kobuki Gazebo simulation in an empty world -->
+<launch>
+	<!-- start Gazebo with an race map world -->
+	<arg name="debug" default="false"/>
+	<arg name="gui" default="true"/>
+	<arg name="headless" default="false"/>
+	<arg name="paused" default="false"/>
+	<arg name="use_sim_time" default="true"/>
+  	<arg name="world_name" default="$(find kobuki_nav)/maps/jackal_race.world" />
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="debug" value="$(arg debug)"/>
+		<arg name="gui" value="$(arg gui)"/>
+		<arg name="paused" value="$(arg paused)"/>
+		<arg name="use_sim_time" value="$(arg use_sim_time)"/>
+		<arg name="headless" value="$(arg headless)"/>
+		<arg name="world_name" value="$(arg world_name)"/>
+	</include>
+
+	<!-- spawn the robot -->
+	<include file="$(find kobuki_gazebo)/launch/includes/robot.launch.xml"/>
+
+	<node pkg="tf" type="static_transform_publisher" name="base_broadcaster" args="0 0 0 0 0 0 1 map odom 0.1"/>
+
+  	<!-- Run the map server -->
+ 	<arg name="map_file" default="$(find kobuki_nav)/maps/jackal_race.yaml"/>
+ 	<node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+    
+	<node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+		<rosparam file="$(find kobuki_nav)/params/costmap_common_params.yaml" command="load" ns="global_costmap" />
+		<rosparam file="$(find kobuki_nav)/params/costmap_common_params.yaml" command="load" ns="local_costmap" />
+		<rosparam file="$(find kobuki_nav)/params/local_costmap_params.yaml" command="load" />
+		<rosparam file="$(find kobuki_nav)/params/global_costmap_params.yaml" command="load" />
+		<rosparam file="$(find kobuki_nav)/params/base_local_planner_params.yaml" command="load" />
+	</node>
+</launch>

@@ -34,7 +34,6 @@ def accelerationTransform(a, v, w, theta_0):
     cos_theta = np.cos(theta_0)
     sin_theta = np.sin(theta_0)
     inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
-    print (a[0] + v * w * sin_theta + d * (w**2))
     term1 = a[0] + v * w * sin_theta + d * (w**2) * cos_theta
     term2 = a[1] - v * w * cos_theta + d * (w**2) * sin_theta
     acc = np.matmul(inverse, np.vstack([term1, term2]))
@@ -46,10 +45,16 @@ def updateWorld(msg):
     """This funcion is called whenever the gazebo/model_states publishes. This function
     updates the world variables as fast as possible"""
     global X, V, orientation
-    X = np.array([float(msg.pose[1].position.x), float(msg.pose[1].position.y)])
-    V = np.array([float(msg.twist[1].linear.x), float(msg.twist[1].linear.y)])
-    orientation = np.arctan2(2 * float(msg.pose[1].orientation.w) * float(msg.pose[1].orientation.z), \
-        1 - 2 * float(msg.pose[1].orientation.z)**2)
+    d = 0.2
+    
+    X = np.array([float(msg.pose[-1].position.x), float(msg.pose[-1].position.y)])
+    V = np.array([float(msg.twist[-1].linear.x), float(msg.twist[-1].linear.y)])
+    orientation = np.arctan2(2 * float(msg.pose[-1].orientation.w) * float(msg.pose[-1].orientation.z), \
+        1 - 2 * float(msg.pose[-1].orientation.z)**2)
+    X[0] = X[0] + d*np.cos(orientation)
+    X[1] = X[1] + d*np.sin(orientation)
+    V[0] = V[0] + d*(-float(msg.twist[-1].angular.z))*np.sin(orientation)
+    V[1] = V[1] + d*(float(msg.twist[-1].angular.z))*np.cos(orientation)
 
 def cb_goal(msg):
     global V_des
@@ -59,6 +64,28 @@ def cb_goal(msg):
     goal[0] = msg.goal.target_pose.pose.position.x
     goal[1] = msg.goal.target_pose.pose.position.y
 
+	# Trajectory planning
+    initial = np.copy(X)
+    t0 = 5.0
+    growth = 1
+    logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
+    d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
+    V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
+    t = 0
+
+    data = rospy.wait_for_message('/move_base/NavfnROS/plan', Path)
+    cb_path(data)
+    
+def cb_path(msg):
+    global path
+    sub_sampling = 5
+    
+    path = Path()
+    
+    for k in range(0,len(msg.poses),sub_sampling):
+        path.poses.append(msg.poses[k])
+    path.poses[-1] = msg.poses[-1]
+ 
 rospy.init_node('mpc_controller')
 
 # Waiting gazebo first goal message
@@ -67,6 +94,9 @@ cb_goal(data)
 
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
+
+# Subscribing to full path
+rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)
 
 # Velocity publishers
 pub_motor_power = rospy.Publisher('/mobile_base/commands/motor_power', MotorPower, queue_size=10)
@@ -98,7 +128,16 @@ vel = Twist()
 while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
-    setpoint = np.ravel([np.append(P_des(t + k * Ts), V_des(t + k * Ts)) for k in range(0, N + 1)])
+    setpoint = np.zeros((N+1,nx))
+    for k in range(0, N+1):
+        if k >= len(path.poses):
+            setpoint[k][:] = np.array([goal[0], goal[1], V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
+        else:
+            setpoint[k][:] = np.array([path.poses[k].pose.position.x, path.poses[k].pose.position.y, V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
+    setpoint = np.ravel(setpoint)
+    
+    if len(path.poses) > 1:
+        path.poses.pop(0)
 
     # Updating initial conditions
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])
@@ -114,6 +153,8 @@ while not rospy.is_shutdown():
 
     vel.linear.x = vel.linear.x + acc[0] * Ts
     vel.angular.z = vel.angular.z + acc[1] * Ts
+        
+    print (vel.linear.x, vel.angular.z)
 
     pub_motor_power.publish(1)
     pub.publish(vel)

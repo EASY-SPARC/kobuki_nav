@@ -19,7 +19,7 @@
 	<!-- spawn the robot -->
 	<include file="$(find kobuki_gazebo)/launch/includes/robot.launch.xml"/>
 
-	<node pkg="tf" type="static_transform_publisher" name="base_broadcaster" args="0 0 0 0 0 0 1 map odom 0.1"/>
+	<node pkg="tf" type="static_transform_publisher" name="map_broadcaster" args="0 0 0 0 0 0 1 map odom 0.1"/>
 
   	<!-- Run the map server -->
  	<arg name="map_file" default="$(find kobuki_nav)/maps/jackal_race.yaml"/>

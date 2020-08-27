@@ -12,7 +12,7 @@ from kobuki_msgs.msg import MotorPower
 from MPC import MPC
 
 N = 10
-N_c = 5
+N_c = 10
 Ts = 0.1
 X = np.array([0., 0.])
 orientation = 0
@@ -135,6 +135,7 @@ while not rospy.is_shutdown():
         else:
             setpoint[k][:] = np.array([path.poses[k].pose.position.x, path.poses[k].pose.position.y, V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
     setpoint = np.ravel(setpoint)
+    print(setpoint)
     
     if len(path.poses) > 1:
         path.poses.pop(0)
@@ -143,7 +144,7 @@ while not rospy.is_shutdown():
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])
 
     # Computing optimal input values
-    [_, acceleration] = controller.getNewVelocity(setpoint)
+    [velocity, acceleration] = controller.getNewVelocity(setpoint)
 
     if len(setpoint) > 1:
         [setpoint_pos.x, setpoint_pos.y] = setpoint[0:2]#P_des(t)
@@ -151,13 +152,15 @@ while not rospy.is_shutdown():
         [setpoint_pos.x, setpoint_pos.y] = [goal[0], goal[1]]
 
     [setpoint_vel.x, setpoint_vel.y] = V_des(t)
+    
+    print (">>",velocity[0], velocity[1])
 
     acc = accelerationTransform(acceleration, vel.linear.x, vel.angular.z, orientation)
 
     vel.linear.x = vel.linear.x + acc[0] * Ts
     vel.angular.z = vel.angular.z + acc[1] * Ts
         
-    print (vel.linear.x, vel.angular.z)
+    print ("$$", vel.linear.x, vel.angular.z)
 
     pub_motor_power.publish(1)
     pub.publish(vel)

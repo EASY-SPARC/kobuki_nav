@@ -145,7 +145,10 @@ while not rospy.is_shutdown():
     # Computing optimal input values
     [_, acceleration] = controller.getNewVelocity(setpoint)
 
-    [setpoint_pos.x, setpoint_pos.y] = P_des(t)
+    if len(setpoint) > 1:
+        [setpoint_pos.x, setpoint_pos.y] = setpoint[0:2]#P_des(t)
+    else:
+        [setpoint_pos.x, setpoint_pos.y] = [goal[0], goal[1]]
 
     [setpoint_vel.x, setpoint_vel.y] = V_des(t)
 

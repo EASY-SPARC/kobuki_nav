@@ -1,4 +1,4 @@
 global_costmap:
   global_frame: map
-  robot_base_frame: base_link
+  robot_base_frame: controll_frame
   static_map: true

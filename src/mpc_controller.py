@@ -17,8 +17,8 @@ Ts = 0.1
 X = np.array([0., 0.])
 orientation = 0
 V = np.array([0., 0.])
-V_min = -5
-V_max = 5
+V_min = -1
+V_max = 1
 nx = 4
 
 goal = np.zeros(2)
@@ -59,7 +59,7 @@ def updateWorld(msg):
 def cb_goal(msg):
     global V_des
     
-    path = Path()
+    #path = Path()
 
     goal[0] = msg.goal.target_pose.pose.position.x
     goal[1] = msg.goal.target_pose.pose.position.y
@@ -72,21 +72,30 @@ def cb_goal(msg):
     d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
     V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
     t = 0
+    
+    pub_motor_power.publish(0)
 
-    data = rospy.wait_for_message('/move_base/NavfnROS/plan', Path)
-    cb_path(data)
+    #data = rospy.wait_for_message('/move_base/NavfnROS/plan', Path)
+    #cb_path(data)
     
 def cb_path(msg):
-    global path
-    sub_sampling = 5
-    
-    path = Path()
-    
-    for k in range(0,len(msg.poses),sub_sampling):
-        path.poses.append(msg.poses[k])
-    path.poses[-1] = msg.poses[-1]
+    if not len(msg.poses) < 1:
+        global path
+        sub_sampling = 5
+        
+        path = Path()
+        
+        for k in range(0,len(msg.poses),sub_sampling):
+            path.poses.append(msg.poses[k])
+        path.poses[-1] = msg.poses[-1]
+    else:
+        print("OLOCO")
  
 rospy.init_node('mpc_controller')
+
+# Velocity publishers
+pub_motor_power = rospy.Publisher('/mobile_base/commands/motor_power', MotorPower, queue_size=10)
+pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
 
 # Waiting gazebo first goal message
 data = rospy.wait_for_message('/move_base/goal', MoveBaseActionGoal)
@@ -98,9 +107,8 @@ rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
 # Subscribing to full path
 rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)
 
-# Velocity publishers
-pub_motor_power = rospy.Publisher('/mobile_base/commands/motor_power', MotorPower, queue_size=10)
-pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
+# Subscribing to goal
+rospy.Subscriber('/move_base/goal', MoveBaseActionGoal, cb_goal)
 
 # Setpoint Publishers
 pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)
@@ -111,15 +119,6 @@ setpoint_vel = Vector3()
 
 # Initializing Controllers
 controller = MPC(X, V_min, V_max, N, N_c, Ts)
-
-# Global path planning
-initial = np.copy(X)
-t0 = 10.0
-growth = 0.5
-logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
-d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
-P_des = lambda t: goal * logistic(t) + initial * (1 - logistic(t))
-V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 
 t = 0
 

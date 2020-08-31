@@ -55,31 +55,9 @@ def updateWorld(msg):
     X[1] = X[1] + d*np.sin(orientation)
     V[0] = V[0] + d*(-float(msg.twist[-1].angular.z))*np.sin(orientation)
     V[1] = V[1] + d*(float(msg.twist[-1].angular.z))*np.cos(orientation)
-
-def cb_goal(msg):
-    global V_des
-    
-    #path = Path()
-
-    goal[0] = msg.goal.target_pose.pose.position.x
-    goal[1] = msg.goal.target_pose.pose.position.y
-
-	# Trajectory planning
-    initial = np.copy(X)
-    t0 = 5.0
-    growth = 1
-    logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
-    d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
-    V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
-    t = 0
-    
-    pub_motor_power.publish(0)
-
-    data = rospy.wait_for_message('/move_base/NavfnROS/plan', Path)
-    cb_path(data)
     
 def cb_path(msg):
-    if len(msg.poses) >= 1:
+    if len(msg.poses) > 1:
         global path
         sub_sampling = 5
         
@@ -88,27 +66,21 @@ def cb_path(msg):
         for k in range(0,len(msg.poses),sub_sampling):
             path.poses.append(msg.poses[k])
         path.poses[-1] = msg.poses[-1]
-    else:
-        print("OLOCO")
  
 rospy.init_node('mpc_controller')
+
+data = rospy.wait_for_message('/move_base/NavfnROS/plan', Path)
+cb_path(data)
 
 # Velocity publishers
 pub_motor_power = rospy.Publisher('/mobile_base/commands/motor_power', MotorPower, queue_size=10)
 pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
 
-# Waiting gazebo first goal message
-data = rospy.wait_for_message('/move_base/goal', MoveBaseActionGoal)
-cb_goal(data)
-
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
 
 # Subscribing to full path
-#rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)
-
-# Subscribing to goal
-rospy.Subscriber('/move_base/goal', MoveBaseActionGoal, cb_goal)
+rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)
 
 # Setpoint Publishers
 pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)

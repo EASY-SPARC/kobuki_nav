@@ -65,6 +65,8 @@ def cb_path(msg):
         
         for k in range(0,len(msg.poses),sub_sampling):
             path.poses.append(msg.poses[k])
+        if len(path.poses) > 1:
+            path.poses.pop(0)
         path.poses[-1] = msg.poses[-1]
  
 rospy.init_node('mpc_controller')

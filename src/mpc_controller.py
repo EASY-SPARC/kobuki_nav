@@ -75,11 +75,11 @@ def cb_goal(msg):
     
     pub_motor_power.publish(0)
 
-    #data = rospy.wait_for_message('/move_base/NavfnROS/plan', Path)
-    #cb_path(data)
+    data = rospy.wait_for_message('/move_base/NavfnROS/plan', Path)
+    cb_path(data)
     
 def cb_path(msg):
-    if not len(msg.poses) < 1:
+    if len(msg.poses) >= 1:
         global path
         sub_sampling = 5
         
@@ -105,7 +105,7 @@ cb_goal(data)
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
 
 # Subscribing to full path
-rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)
+#rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)
 
 # Subscribing to goal
 rospy.Subscriber('/move_base/goal', MoveBaseActionGoal, cb_goal)
@@ -120,6 +120,13 @@ setpoint_vel = Vector3()
 # Initializing Controllers
 controller = MPC(X, V_min, V_max, N, N_c, Ts)
 
+# Trajectory planning
+initial = np.copy(X)
+t0 = 5.0
+growth = 1
+logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
+d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
+V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 t = 0
 
 vel = Twist()
@@ -130,7 +137,7 @@ while not rospy.is_shutdown():
     setpoint = np.zeros((N+1,nx))
     for k in range(0, N+1):
         if k >= len(path.poses):
-            setpoint[k][:] = np.array([goal[0], goal[1], V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
+            setpoint[k][:] = np.array([setpoint[k-1][0], setpoint[k-1][1], V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
         else:
             setpoint[k][:] = np.array([path.poses[k].pose.position.x, path.poses[k].pose.position.y, V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
     setpoint = np.ravel(setpoint)

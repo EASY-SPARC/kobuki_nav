@@ -52,37 +52,10 @@ def updateWorld(msg):
         V = np.array([float(msg.twist[-1].linear.x), float(msg.twist[-1].linear.y)])
         orientation = np.arctan2(2 * float(msg.pose[-1].orientation.w) * float(msg.pose[-1].orientation.z), \
             1 - 2 * float(msg.pose[-1].orientation.z)**2)
-        #X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
-        #V = np.array([float(msg.twist.twist.linear.x), float(msg.twist.twist.linear.y)])
-        #orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
-        #    1 - 2 * float(msg.pose.pose.orientation.z)**2)
         X[0] = X[0] + d*np.cos(orientation)
         X[1] = X[1] + d*np.sin(orientation)
         V[0] = V[0] + d*(-float(msg.twist[-1].angular.z))*np.sin(orientation)
         V[1] = V[1] + d*(float(msg.twist[-1].angular.z))*np.cos(orientation)
-        #V[0] = V[0] + d*(-float(msg.twist.twist.angular.z))*np.sin(orientation)
-        #V[1] = V[1] + d*(float(msg.twist.twist.angular.z))*np.cos(orientation)
-        #print("&&",orientation, X, V)
-    
-def updateWorld2(msg):
-    global X, V, orientation
-    d = 0.2
-    
-    #X = np.array([float(msg.pose[-1].position.x), float(msg.pose[-1].position.y)])
-    #V = np.array([float(msg.twist[-1].linear.x), float(msg.twist[-1].linear.y)])
-    #orientation = np.arctan2(2 * float(msg.pose[-1].orientation.w) * float(msg.pose[-1].orientation.z), \
-    #    1 - 2 * float(msg.pose[-1].orientation.z)**2)
-    X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
-    V = np.array([float(msg.twist.twist.linear.x), float(msg.twist.twist.linear.y)])
-    orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
-        1 - 2 * float(msg.pose.pose.orientation.z)**2)
-    X[0] = X[0] + d*np.cos(orientation)
-    X[1] = X[1] + d*np.sin(orientation)
-    #V[0] = V[0] + d*(-float(msg.twist[-1].angular.z))*np.sin(orientation)
-    #V[1] = V[1] + d*(float(msg.twist[-1].angular.z))*np.cos(orientation)
-    V[0] = V[0] + d*(-float(msg.twist.twist.angular.z))*np.sin(orientation)
-    V[1] = V[1] + d*(float(msg.twist.twist.angular.z))*np.cos(orientation)
-    print("@@",orientation, X, V)
     
 def cb_path(msg):
     if len(msg.poses) > 1:
@@ -108,7 +81,6 @@ pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
 
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
-#rospy.Subscriber('/odom', Odometry, updateWorld2)
 
 # Subscribing to full path
 rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)

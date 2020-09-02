@@ -42,19 +42,47 @@ def accelerationTransform(a, v, w, theta_0):
     return acc[0]
 
 def updateWorld(msg):
-    """This funcion is called whenever the gazebo/model_states publishes. This function
-    updates the world variables as fast as possible"""
+    if msg.name[-1] == "mobile_base":
+        """This funcion is called whenever the gazebo/model_states publishes. This function
+        updates the world variables as fast as possible"""
+        global X, V, orientation
+        d = 0.2
+        
+        X = np.array([float(msg.pose[-1].position.x), float(msg.pose[-1].position.y)])
+        V = np.array([float(msg.twist[-1].linear.x), float(msg.twist[-1].linear.y)])
+        orientation = np.arctan2(2 * float(msg.pose[-1].orientation.w) * float(msg.pose[-1].orientation.z), \
+            1 - 2 * float(msg.pose[-1].orientation.z)**2)
+        #X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+        #V = np.array([float(msg.twist.twist.linear.x), float(msg.twist.twist.linear.y)])
+        #orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
+        #    1 - 2 * float(msg.pose.pose.orientation.z)**2)
+        X[0] = X[0] + d*np.cos(orientation)
+        X[1] = X[1] + d*np.sin(orientation)
+        V[0] = V[0] + d*(-float(msg.twist[-1].angular.z))*np.sin(orientation)
+        V[1] = V[1] + d*(float(msg.twist[-1].angular.z))*np.cos(orientation)
+        #V[0] = V[0] + d*(-float(msg.twist.twist.angular.z))*np.sin(orientation)
+        #V[1] = V[1] + d*(float(msg.twist.twist.angular.z))*np.cos(orientation)
+        #print("&&",orientation, X, V)
+    
+def updateWorld2(msg):
     global X, V, orientation
     d = 0.2
     
-    X = np.array([float(msg.pose[-1].position.x), float(msg.pose[-1].position.y)])
-    V = np.array([float(msg.twist[-1].linear.x), float(msg.twist[-1].linear.y)])
-    orientation = np.arctan2(2 * float(msg.pose[-1].orientation.w) * float(msg.pose[-1].orientation.z), \
-        1 - 2 * float(msg.pose[-1].orientation.z)**2)
+    #X = np.array([float(msg.pose[-1].position.x), float(msg.pose[-1].position.y)])
+    #V = np.array([float(msg.twist[-1].linear.x), float(msg.twist[-1].linear.y)])
+    #orientation = np.arctan2(2 * float(msg.pose[-1].orientation.w) * float(msg.pose[-1].orientation.z), \
+    #    1 - 2 * float(msg.pose[-1].orientation.z)**2)
+    X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    V = np.array([float(msg.twist.twist.linear.x), float(msg.twist.twist.linear.y)])
+    orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
+        1 - 2 * float(msg.pose.pose.orientation.z)**2)
     X[0] = X[0] + d*np.cos(orientation)
     X[1] = X[1] + d*np.sin(orientation)
-    V[0] = V[0] + d*(-float(msg.twist[-1].angular.z))*np.sin(orientation)
-    V[1] = V[1] + d*(float(msg.twist[-1].angular.z))*np.cos(orientation)
+    #V[0] = V[0] + d*(-float(msg.twist[-1].angular.z))*np.sin(orientation)
+    #V[1] = V[1] + d*(float(msg.twist[-1].angular.z))*np.cos(orientation)
+    V[0] = V[0] + d*(-float(msg.twist.twist.angular.z))*np.sin(orientation)
+    V[1] = V[1] + d*(float(msg.twist.twist.angular.z))*np.cos(orientation)
+    print("@@",orientation, X, V)
     
 def cb_path(msg):
     if len(msg.poses) > 1:
@@ -80,6 +108,7 @@ pub = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
 
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
+#rospy.Subscriber('/odom', Odometry, updateWorld2)
 
 # Subscribing to full path
 rospy.Subscriber('/move_base/NavfnROS/plan', Path, cb_path)
@@ -109,13 +138,14 @@ while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
     setpoint = np.zeros((N+1,nx))
+    ###### TO DO setpoint[0][0:1] = X
     for k in range(0, N+1):
         if k >= len(path.poses):
             setpoint[k][:] = np.array([setpoint[k-1][0], setpoint[k-1][1], V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
         else:
             setpoint[k][:] = np.array([path.poses[k].pose.position.x, path.poses[k].pose.position.y, V_des(t + k * Ts)[0], V_des(t + k * Ts)[1]])
     setpoint = np.ravel(setpoint)
-    print(setpoint)
+    #print(setpoint)
     
     if len(path.poses) > 1:
         path.poses.pop(0)

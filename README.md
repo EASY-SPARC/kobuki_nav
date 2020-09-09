@@ -7,9 +7,9 @@ Installed packages with:
 `sudo apt install ros-melodic-yocs-*`  
 `sudo apt install ros-melodic-ecl-streams`  
 
-Run:
-`roslaunch kobuki_nav kobuki_empty_world.launch`
-`roslaunch kobuki_nav race_rviz.launch`
-`roslaunch kobuki_nav start_mpc.launch`
+Run:  
+`roslaunch kobuki_nav kobuki_empty_world.launch`  
+`roslaunch kobuki_nav race_rviz.launch`  
+`roslaunch kobuki_nav start_mpc.launch`  
 
 Define a 2D goal in Rviz.

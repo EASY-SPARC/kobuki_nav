@@ -135,14 +135,14 @@ while not rospy.is_shutdown():
 
     [setpoint_vel.x, setpoint_vel.y] = V_des(t)
     
-    print (">>",velocity[0], velocity[1])
+    #print (">>",velocity[0], velocity[1])
 
     acc = accelerationTransform(acceleration, vel.linear.x, vel.angular.z, orientation)
 
     vel.linear.x = vel.linear.x + acc[0] * Ts
     vel.angular.z = vel.angular.z + acc[1] * Ts
         
-    print ("$$", vel.linear.x, vel.angular.z)
+    #print ("$$", vel.linear.x, vel.angular.z)
 
     pub_motor_power.publish(1)
     pub.publish(vel)

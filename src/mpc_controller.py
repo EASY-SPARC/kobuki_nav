@@ -119,6 +119,8 @@ while not rospy.is_shutdown():
     setpoint = np.ravel(setpoint)
     #print(setpoint)
     
+    print(path.poses[-1])
+    
     if len(path.poses) > 1:
         path.poses.pop(0)
 

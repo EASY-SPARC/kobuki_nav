@@ -16,16 +16,19 @@
 		<arg name="world_name" value="$(arg world_name)"/>
 	</include>
 
-	<!-- spawn robot -->
+	<!-- Robot -->
 	<arg name="robot_name" value="mobile_base"/>
 
 	<param name="robot_description"
         command="$(find xacro)/xacro '$(find kobuki_nav)/xacro/main.urdf.xacro'"/>
-
+	<!-- Gazebo Robot Spawn-->
 	<node pkg="gazebo_ros" type="spawn_model" name="spawn_$(arg robot_name)"
-		  args="-x 0.0 -y 0.0 -z 1.5 -unpause -urdf -param robot_description -model $(arg robot_name)" respawn="false">
+		  args="-x 0.0 -y 0.0 -z 0.0 -unpause -urdf -param robot_description -model $(arg robot_name)" respawn="false">
 	</node>
-
+	<!-- Load Controllers -->
+	<rosparam file="$(find arm_model)/params/controllers.yaml" command="load"/>
+	<node name="controller_spawner" pkg="controller_manager" type="spawner" args="arm_controller"/>
+	<!-- TF publisher-->
  	<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
     	<param name="publish_frequency" type="double" value="30.0"/>
 	</node>
@@ -46,5 +49,11 @@
 		<rosparam file="$(find kobuki_nav)/params/global_costmap_params.yaml" command="load" />
 		<rosparam file="$(find kobuki_nav)/params/base_local_planner_params.yaml" command="load" />
 	</node>
+
+	<!-- Run arm trajectory planner -->
+	<include file="$(find moveit_arm_config)/launch/move_group.launch"/>
+    
+    <arg name="rvizconfig" default="$(find moveit_arm_config)/launch/moveit.rviz" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
 </launch>

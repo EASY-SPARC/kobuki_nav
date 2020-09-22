@@ -8,6 +8,6 @@
       <parent link="base_footprint"/>
       <child link="base_link" />
     </joint-->
-    <xacro:kobuki/>
-    <!--xacro:arm_model/-->
+    <!--xacro:kobuki/-->
+    <xacro:arm_model/>
 </robot>
